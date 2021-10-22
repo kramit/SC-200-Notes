@@ -1,6 +1,16 @@
 workbook 101
 https://techcommunity.microsoft.com/t5/azure-sentinel/azure-sentinel-workbooks-101-with-sample-workbook/ba-p/1409216#:~:text=In%20Azure%20Sentinel%2C%20Workbooks%20contain%20a%20large%20pool,based%20on%20the%20user%E2%80%99s%20vision%20and%20use%20case.
 
+Workbooks Deep Dive from Microsoft
+https://www.youtube.com/watch?v=7eYNaYSsk1A
+
+------
+
+Sentinal Ninja Training Level 400
+https://techcommunity.microsoft.com/t5/azure-sentinel/become-an-azure-sentinel-ninja-the-complete-level-400-training/ba-p/1246310
+
+MS Security Community
+https://techcommunity.microsoft.com/t5/security-compliance-and-identity/join-our-security-community/ba-p/927847
 ------
 
 sample alerts:
@@ -17,3 +27,14 @@ KQL log query
 
 SecurityAlert
 | were productname == "Azure Security Centre"
+
+
+------
+custom analytics rule
+
+AzureActivity
+| where OperationName == "Create or Update Virtual Machine"or OperationName
+=="Create Deployment"
+| where ActivityStatus == "Succeeded"
+| make-seriesdcount(ResourceId) default=0 on EventSubmissionTimestamp
+inrange(ago(7d), now(), 1d) by Caller
