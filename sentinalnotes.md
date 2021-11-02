@@ -11,6 +11,11 @@ https://techcommunity.microsoft.com/t5/azure-sentinel/become-an-azure-sentinel-n
 
 MS Security Community
 https://techcommunity.microsoft.com/t5/security-compliance-and-identity/join-our-security-community/ba-p/927847
+
+
+Sentinal Parsers for ASIM  Azure Sentinel Information Model 
+https://github.com/Azure/Azure-Sentinel/tree/master/Parsers
+
 ------
 
 sample alerts:
@@ -38,3 +43,18 @@ AzureActivity
 | where ActivityStatus == "Succeeded"
 | make-seriesdcount(ResourceId) default=0 on EventSubmissionTimestamp
 inrange(ago(7d), now(), 1d) by Caller
+
+
+------
+
+Improve SecOps with Azure Sentinel your Cloud-Native SIEM | DB161 
+https://www.youtube.com/watch?v=Jeu0lRjoVs4
+
+Azure Sentinel webinar: Unleash the automation Jedi tricks & build Logic Apps Playbooks like a Boss
+https://www.youtube.com/watch?v=G6TIzJK8XBA
+
+nov 2nd 2021 ignite sentinal talk
+https://myignite.microsoft.com/sessions/c0a74937-5c04-499d-a473-f72b107f824e?source=sessions
+
+upcoming webinars from nov 2nd
+https://techcommunity.microsoft.com/t5/security-compliance-and-identity/security-community-webinars/ba-p/927888
