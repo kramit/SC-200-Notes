@@ -17,6 +17,10 @@ Sentinal Parsers for ASIM  Azure Sentinel Information Model
 https://github.com/Azure/Azure-Sentinel/tree/master/Parsers
 
 ------
+Long term logs over 90 days
+https://techcommunity.microsoft.com/t5/microsoft-sentinel-blog/move-your-microsoft-sentinel-logs-to-long-term-storage-with-ease/ba-p/1407153#:~:text=Out%20of%20the%20box%2C%20Azure%20Sentinel%20provides%2090,retention%20for%20Log%20Analytics%20workspaces%20is%202%20years.
+
+------
 
 sample alerts:
 
