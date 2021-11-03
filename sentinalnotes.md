@@ -46,7 +46,7 @@ AzureActivity
 =="Create Deployment"
 | where ActivityStatus == "Succeeded"
 | make-seriesdcount(ResourceId) default=0 on EventSubmissionTimestamp
-inrange(ago(7d), now(), 1d) by Caller
+in range(ago(7d), now(), 1d) by Caller
 
 
 ------
@@ -62,3 +62,8 @@ https://myignite.microsoft.com/sessions/c0a74937-5c04-499d-a473-f72b107f824e?sou
 
 upcoming webinars from nov 2nd
 https://techcommunity.microsoft.com/t5/security-compliance-and-identity/security-community-webinars/ba-p/927888
+
+
+-------
+
+https://github.com/Azure/Azure-Sentinel/tree/master/Solutions/Training/Azure-Sentinel-Training-Lab
