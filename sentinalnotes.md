@@ -68,3 +68,10 @@ https://techcommunity.microsoft.com/t5/security-compliance-and-identity/security
 -------
 
 https://github.com/Azure/Azure-Sentinel/tree/master/Solutions/Training/Azure-Sentinel-Training-Lab
+
+
+------
+
+ML graph
+
+https://www.youtube.com/watch?v=5e1vO6AwoQw&list=PLrIRKpZq-3PcPyiluPtZEw2Zk6blBYVxf&index=9&t=310s
