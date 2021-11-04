@@ -45,7 +45,8 @@ AzureActivity
 | where OperationName == "Create or Update Virtual Machine"or OperationName
 =="Create Deployment"
 | where ActivityStatus == "Succeeded"
-| make-seriesdcount(ResourceId) default=0 on EventSubmissionTimestamp
+| make-series dcount(ResourceId) 
+default=0 on EventSubmissionTimestamp
 in range(ago(7d), now(), 1d) by Caller
 
 
