@@ -18,3 +18,10 @@ Covid19_flat()
 | project Country, Deaths
 |summarize Death=count() by Country
 
+StormEvents
+| project State, InjuriesDirect, EventType
+| where State == "FLORIDA"
+| summarize InjuriesDirect=count() by EventType
+| sort by  InjuriesDirect
+| top 5 by InjuriesDirect
+| render piechart 
