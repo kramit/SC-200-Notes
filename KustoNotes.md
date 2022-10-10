@@ -25,3 +25,8 @@ StormEvents
 | sort by  InjuriesDirect
 | top 5 by InjuriesDirect
 | render piechart 
+
+
+
+
+https://portal.azure.com/#blade/Microsoft_Azure_Monitoring_Logs/DemoLogsBlade
