@@ -1,3 +1,54 @@
+Same workspace for defender for cloud and sentinal
+
+SendLogsManual.ps1 script to send CSV to JSON then to the LAW
+
+LAW cost management, daily cap
+Tweak table in the LAW os sentinal to set archive period on each table that is ingested
+
+
+Free Data connectors
+
+- Azure Activity Logs
+- Entra ID protection
+- O365
+- Def cloud
+- Def IOT
+- Def XDR
+- Def Endpoint
+- Def Identity
+- Def Cloud Apps
+
+
+Arc servers to use AMA DCR to collect logging data fro windows services
+
+RDP logon data (event 4624) Analytics 
+
+ASIM to normalise logs ingested into sentinal aka.ms/asasim (ASIM docs)
+
+CISA TAXII Feed
+
+AlienVaultFeed
+https://otx.alienvault.com/taxii/root
+user_AlienVault
+
+OSSEMproject.com
+open source security events metadata
+
+Analytics test rule
+----
+AzureActivity
+    | where OperationName == 'Delete Virtual Machine'
+    | where ActivityStatus == 'Accepted'
+    | extend AccountCustomEntity = Caller
+    | extend IPCustomEntity = CallerIpAddress
+----
+
+
+
+
+
+
+
 workbook 101
 https://techcommunity.microsoft.com/t5/azure-sentinel/azure-sentinel-workbooks-101-with-sample-workbook/ba-p/1409216#:~:text=In%20Azure%20Sentinel%2C%20Workbooks%20contain%20a%20large%20pool,based%20on%20the%20user%E2%80%99s%20vision%20and%20use%20case.
 
