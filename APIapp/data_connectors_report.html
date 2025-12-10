@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Sentinel Data Connectors Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stat-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.95em;
+        }
+        
+        .connectors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .connector-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border-left: 5px solid #667eea;
+        }
+        
+        .connector-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        .connector-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .connector-emoji {
+            font-size: 2.5em;
+        }
+        
+        .connector-title {
+            flex: 1;
+        }
+        
+        .connector-title h3 {
+            font-size: 1.3em;
+            margin-bottom: 5px;
+        }
+        
+        .connector-type {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+        
+        .connector-body {
+            padding: 20px;
+        }
+        
+        .detail-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            color: #333;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            word-break: break-all;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .status-enabled {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-disabled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            opacity: 0.8;
+        }
+        
+        .properties-section {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-size: 0.8em;
+        }
+        
+        .properties-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .json-display {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75em;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Microsoft Sentinel Data Connectors Report</h1>
+            <p>📊 KramitSentinal Workspace Overview</p>
+            <p style="margin-top: 15px; font-size: 0.9em;">📅 Generated: 2025-12-10 11:38:10</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-icon">🔗</div>
+                <div class="stat-number">3</div>
+                <div class="stat-label">Active Connectors</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-number">3</div>
+                <div class="stat-label">Enabled Connectors</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-number">100%</div>
+                <div class="stat-label">Health Status</div>
+            </div>
+        </div>
+        
+        <div class="connectors-grid">
+
+            <div class="connector-card" style="border-left-color: #FF6B6B">
+                <div class="connector-header" style="background: linear-gradient(135deg, #FF6B6B 0%, #FF6B6Bdd 100%)">
+                    <div class="connector-emoji">🔐</div>
+                    <div class="connector-title">
+                        <h3>AzureSecurityCenter</h3>
+                        <div class="connector-type">Data Connector</div>
+                    </div>
+                </div>
+                <div class="connector-body">
+                    <div class="detail-item">
+                        <div class="detail-label">🆔 Connector ID</div>
+                        <div class="detail-value">d1be6296-52d2-45b7-b5db-2001b43456a3</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">📊 Alerts Status</div>
+                        <span class="status-badge status-enabled">✅ ENABLED</span>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label">📋 Subscription ID</div>
+                        <div class="detail-value">a520c179-1e36-47f9-be0a-84f4e48b3091</div>
+                    </div>
+
+                    <div class="properties-section">
+                        <div class="properties-label">📝 Full Configuration</div>
+                        <div class="json-display">{
+  "subscriptionId": "a520c179-1e36-47f9-be0a-84f4e48b3091",
+  "dataTypes": {
+    "alerts": {
+      "state": "enabled"
+    }
+  }
+}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="connector-card" style="border-left-color: #4ECDC4">
+                <div class="connector-header" style="background: linear-gradient(135deg, #4ECDC4 0%, #4ECDC4dd 100%)">
+                    <div class="connector-emoji">👥</div>
+                    <div class="connector-title">
+                        <h3>AzureActiveDirectory</h3>
+                        <div class="connector-type">Data Connector</div>
+                    </div>
+                </div>
+                <div class="connector-body">
+                    <div class="detail-item">
+                        <div class="detail-label">🆔 Connector ID</div>
+                        <div class="detail-value">5f6094aa-48a2-4335-bc23-f3f99c8491b5</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">📊 Alerts Status</div>
+                        <span class="status-badge status-enabled">✅ ENABLED</span>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label">🏢 Tenant ID</div>
+                        <div class="detail-value">2bf0f2d8-74f9-4288-b5d9-266cd13cc4ce</div>
+                    </div>
+
+                    <div class="properties-section">
+                        <div class="properties-label">📝 Full Configuration</div>
+                        <div class="json-display">{
+  "dataTypes": {
+    "alerts": {
+      "state": "enabled"
+    }
+  },
+  "tenantId": "2bf0f2d8-74f9-4288-b5d9-266cd13cc4ce"
+}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="connector-card" style="border-left-color: #45B7D1">
+                <div class="connector-header" style="background: linear-gradient(135deg, #45B7D1 0%, #45B7D1dd 100%)">
+                    <div class="connector-emoji">⚔️</div>
+                    <div class="connector-title">
+                        <h3>MicrosoftDefenderAdvancedThreatProtection</h3>
+                        <div class="connector-type">Data Connector</div>
+                    </div>
+                </div>
+                <div class="connector-body">
+                    <div class="detail-item">
+                        <div class="detail-label">🆔 Connector ID</div>
+                        <div class="detail-value">5819c08a-406a-43f0-bb34-5f4be081598f</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">📊 Alerts Status</div>
+                        <span class="status-badge status-enabled">✅ ENABLED</span>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label">🏢 Tenant ID</div>
+                        <div class="detail-value">2bf0f2d8-74f9-4288-b5d9-266cd13cc4ce</div>
+                    </div>
+
+                    <div class="properties-section">
+                        <div class="properties-label">📝 Full Configuration</div>
+                        <div class="json-display">{
+  "dataTypes": {
+    "alerts": {
+      "state": "enabled"
+    }
+  },
+  "tenantId": "2bf0f2d8-74f9-4288-b5d9-266cd13cc4ce"
+}</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        
+        <div class="footer">
+            <p>🔐 Security Report • All data connectors are actively streaming data to Sentinel</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">✨ Generated by Sentinel Data Connector Exporter</p>
+        </div>
+    </div>
+</body>
+</html>
