@@ -1,0 +1,6 @@
+IncidentId,Title,Severity,Status,Description,LabelNames,FirstActivityOffsetHours,LastActivityOffsetHours
+lab-phishing-001,Suspicious phishing email opened by finance user,Medium,New,A finance user opened a simulated phishing email and clicked a credential-harvesting link. Review sign-in activity and mailbox rules.,SC-200 Lab;Phishing;Identity,-6,-5
+lab-impossible-travel-002,Impossible travel sign-in for student account,High,New,A student account signed in from two distant locations within a short time window. Validate whether the activity is expected before closing the incident.,SC-200 Lab;Signin;Identity,-4,-3
+lab-malware-003,Malware detected on Windows 11 lab VM,High,Active,Defender reported malware-like behavior on a Windows 11 lab virtual machine. Investigate device timeline and related process execution.,SC-200 Lab;Endpoint;Malware,-3,-2
+lab-data-exfil-004,Unusual download volume from SharePoint,Medium,New,A user downloaded an unusually large number of SharePoint documents. Review user intent and affected files.,SC-200 Lab;Data;SharePoint,-8,-7
+lab-bruteforce-005,Multiple failed RDP logons followed by success,Low,New,Repeated failed RDP logons were followed by a successful authentication. Confirm whether the source address and account owner are legitimate.,SC-200 Lab;RDP;Windows,-2,-1
