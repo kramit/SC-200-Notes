@@ -163,11 +163,12 @@ function Send-LogAnalyticsBatch {
     }
 
     $body = $Records | ConvertTo-Json -Depth 30
+    $bodyBytes = [Text.Encoding]::UTF8.GetBytes($body)
     $method = "POST"
     $contentType = "application/json"
     $resource = "/api/logs"
     $date = (Get-Date).ToUniversalTime().ToString("r")
-    $contentLength = $body.Length
+    $contentLength = $bodyBytes.Length
     $signature = New-LogAnalyticsSignature `
         -CustomerId $CustomerId `
         -SharedKey $SharedKey `
@@ -184,7 +185,7 @@ function Send-LogAnalyticsBatch {
     }
 
     $uri = "https://$CustomerId.ods.opinsights.azure.com$resource" + "?api-version=2016-04-01"
-    $response = Invoke-WebRequest -Uri $uri -Method $method -ContentType $contentType -Headers $headers -Body $body -UseBasicParsing
+    $response = Invoke-WebRequest -Uri $uri -Method $method -ContentType $contentType -Headers $headers -Body $bodyBytes -UseBasicParsing
     return $response.StatusCode
 }
 
