@@ -1,42 +1,62 @@
 <#
 .SYNOPSIS
-Imports Microsoft Sentinel Training Lab telemetry into an existing Log Analytics workspace.
+Imports the SC-200 training CSV data into an existing Log Analytics workspace.
 
 .DESCRIPTION
-Downloads the Training Lab ingestion helper and telemetry files from the Azure-Sentinel
-GitHub repository, then runs the helper against an existing workspace. The helper creates
-the required Data Collection Endpoint, Data Collection Rules, custom tables, and ingests
-the CSV/JSON telemetry through the Azure Monitor Logs Ingestion API.
+Downloads CSV files from this repository's KQLData/Artifacts/Telemetry folder and
+posts them to the Azure Monitor Log Analytics Data Collector API. The only required
+inputs are the resource group and workspace name; the script resolves the workspace
+ID and shared key with Azure CLI.
 
 Requires Azure CLI and an authenticated session from `az login`.
+
+.EXAMPLE
+.\Import-SentinelTrainingLabData.ps1 -ResourceGroupName rg-sc200-lab -WorkspaceName law-sc200-lab
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess = $true)]
 param(
+    [Parameter(Mandatory = $true)]
+    [string]$ResourceGroupName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$WorkspaceName,
+
     [string]$SubscriptionId,
 
-    [string]$ResourceGroupName = "defender-RG",
+    [string]$RepoBaseUrl = "https://raw.githubusercontent.com/kramit/SC-200-Notes/main/KQLData/Artifacts",
 
-    [string]$WorkspaceName = "defenderWorkspace",
+    [string]$WorkDir = (Join-Path $env:TEMP "sc200-training-data"),
 
-    [string]$RepoBaseUrl = "https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/Tools/Microsoft-Sentinel-Training-Lab/Artifacts",
+    [int]$MaxBatchBytes = 25MB,
 
-    [string]$WorkDir = (Join-Path $env:TEMP "sentinel-training-lab-ingest"),
-
-    [string]$DceName = "sentinel-training-dce",
-
-    [string]$DcrPrefix = "sentinel-training-",
-
-    [string]$BuiltInDcrPrefix = "sentinel-training-builtin-",
-
-    [string]$AssigneeObjectId,
-
-    [bool]$IncludeBuiltIn = $true,
-
-    [switch]$DownloadOnly
+    [switch]$SkipDownload
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$TelemetryFiles = [ordered]@{
+    "securityEvents.csv"                    = "SecurityEvent"
+    "disable_accounts.csv"                  = "SigninLogs"
+    "office_activity_inbox_rule.csv"        = "OfficeActivity"
+    "azureActivity_adele.csv"               = "AzureActivity"
+    "azure_activity.csv"                    = "AzureActivity"
+    "office_activity.csv"                   = "OfficeActivity"
+    "sign-in_adelete.csv"                   = "SigninLogs"
+    "signinLogs.csv"                        = "SigninLogs"
+    "model_evasion_detection_CL_alerts.csv" = "OfficeActivity"
+    "solarigate-beacon-umbrella.csv"        = "Cisco_Umbrella_dns"
+    "AuditLogs_Hunting.csv"                 = "AuditLogs"
+    "solarigate_CEFevent.csv"               = "CommonSecurityLog"
+    "HighRiskApps.csv"                      = "HighRiskApps"
+    "PenTestsIPaddresses.csv"               = "PenTestsIPaddresses"
+    "ABAPAppLog_CL.csv"                     = "ABAPAppLog"
+    "ABAPAuditLog_CL.csv"                   = "ABAPAuditLog"
+    "ABAPChangeDocsLog_CL.csv"              = "ABAPChangeDocsLog"
+    "ABAPCRLog_CL.csv"                      = "ABAPCRLog"
+    "ABAPJobLog_CL.csv"                     = "ABAPJobLog"
+    "ABAPSpoolLog_CL.csv"                   = "ABAPSpoolLog"
+}
 
 function Assert-AzCli {
     if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
@@ -44,7 +64,7 @@ function Assert-AzCli {
     }
 }
 
-function Resolve-SubscriptionId {
+function Resolve-Subscription {
     param([string]$ProvidedSubscriptionId)
 
     if ($ProvidedSubscriptionId) {
@@ -52,163 +72,203 @@ function Resolve-SubscriptionId {
         return $ProvidedSubscriptionId
     }
 
-    $subscription = az account show --query id -o tsv 2>$null
-    if (-not $subscription) {
-        throw "No Azure CLI subscription context found. Run 'az login' and select a subscription, or pass -SubscriptionId."
+    $currentSubscriptionId = az account show --query id -o tsv 2>$null
+    if (-not $currentSubscriptionId) {
+        throw "No Azure CLI subscription context found. Run 'az login' or pass -SubscriptionId."
     }
 
-    return $subscription
+    return $currentSubscriptionId
 }
 
-function Get-GitHubApiInfo {
-    param([string]$RawBaseUrl)
-
-    if ($RawBaseUrl -notmatch '^https://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)/(.+)$') {
-        throw "RepoBaseUrl must be a raw.githubusercontent.com URL. Got: $RawBaseUrl"
-    }
-
-    return @{
-        Owner  = $Matches[1]
-        Repo   = $Matches[2]
-        Branch = $Matches[3]
-        Path   = $Matches[4]
-        Base   = "https://api.github.com/repos/$($Matches[1])/$($Matches[2])/contents/$($Matches[4])"
-        Query  = "?ref=$($Matches[3])"
-    }
-}
-
-function Get-RepoFiles {
+function Get-WorkspaceCredentials {
     param(
-        [hashtable]$ApiInfo,
-        [string]$SubFolder,
-        [string[]]$Extensions
+        [string]$ResourceGroupName,
+        [string]$WorkspaceName
     )
 
-    $headers = @{
-        "User-Agent" = "SentinelTrainingLabImport"
-        "Accept"     = "application/vnd.github.v3+json"
-    }
-    $url = "$($ApiInfo.Base)/$SubFolder$($ApiInfo.Query)"
-    $response = Invoke-RestMethod -Uri $url -Headers $headers
-    $items = @($response)
-    if ($response -and $response.PSObject.Properties.Name -contains "name" -and $response.name -is [array]) {
-        $items = for ($i = 0; $i -lt $response.name.Count; $i++) {
-            [pscustomobject]@{
-                name = $response.name[$i]
-                type = $response.type[$i]
-            }
-        }
+    $customerId = az monitor log-analytics workspace show `
+        --resource-group $ResourceGroupName `
+        --workspace-name $WorkspaceName `
+        --query customerId `
+        -o tsv
+
+    if (-not $customerId) {
+        throw "Could not find workspace '$WorkspaceName' in resource group '$ResourceGroupName'."
     }
 
-    return @(
-        $items |
-            Where-Object {
-                $_.type -eq "file" -and
-                $Extensions -contains ([System.IO.Path]::GetExtension($_.name).ToLowerInvariant())
-            } |
-            Select-Object -ExpandProperty name
-    )
+    $sharedKey = az monitor log-analytics workspace get-shared-keys `
+        --resource-group $ResourceGroupName `
+        --workspace-name $WorkspaceName `
+        --query primarySharedKey `
+        -o tsv
+
+    if (-not $sharedKey) {
+        throw "Could not read the primary shared key for workspace '$WorkspaceName'."
+    }
+
+    return [pscustomobject]@{
+        CustomerId = $customerId
+        SharedKey  = $sharedKey
+    }
 }
 
-function Save-RepoFile {
+function Save-TrainingFile {
     param(
-        [string]$Url,
-        [string]$OutFile
+        [string]$FileName,
+        [string]$OutputPath
     )
 
-    $parent = Split-Path -Path $OutFile -Parent
+    $url = "$RepoBaseUrl/Telemetry/$FileName"
+    $parent = Split-Path -Path $OutputPath -Parent
     if (-not (Test-Path -Path $parent)) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
 
-    $maxAttempts = 4
-    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-        try {
-            Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing
-            return
-        }
-        catch {
-            if ($attempt -eq $maxAttempts) {
-                throw "Failed to download $Url after $maxAttempts attempts. Last error: $($_.Exception.Message)"
-            }
+    Write-Host "Downloading $FileName"
+    Invoke-WebRequest -Uri $url -OutFile $OutputPath -UseBasicParsing
+}
 
-            $delay = [math]::Min(30, [math]::Pow(2, $attempt))
-            Write-Warning "Download failed for $Url. Retrying in $delay seconds..."
-            Start-Sleep -Seconds $delay
-        }
+function New-LogAnalyticsSignature {
+    param(
+        [string]$CustomerId,
+        [string]$SharedKey,
+        [string]$Date,
+        [int]$ContentLength,
+        [string]$Method,
+        [string]$ContentType,
+        [string]$Resource
+    )
+
+    $xHeaders = "x-ms-date:$Date"
+    $stringToHash = "$Method`n$ContentLength`n$ContentType`n$xHeaders`n$Resource"
+    $bytesToHash = [Text.Encoding]::UTF8.GetBytes($stringToHash)
+    $keyBytes = [Convert]::FromBase64String($SharedKey)
+    $sha256 = [System.Security.Cryptography.HMACSHA256]::new($keyBytes)
+    $hash = $sha256.ComputeHash($bytesToHash)
+    $encodedHash = [Convert]::ToBase64String($hash)
+
+    return "SharedKey ${CustomerId}:$encodedHash"
+}
+
+function Send-LogAnalyticsBatch {
+    param(
+        [string]$CustomerId,
+        [string]$SharedKey,
+        [string]$LogType,
+        [object[]]$Records
+    )
+
+    if (-not $Records -or $Records.Count -eq 0) {
+        return $null
     }
+
+    $body = $Records | ConvertTo-Json -Depth 30
+    $method = "POST"
+    $contentType = "application/json"
+    $resource = "/api/logs"
+    $date = (Get-Date).ToUniversalTime().ToString("r")
+    $contentLength = $body.Length
+    $signature = New-LogAnalyticsSignature `
+        -CustomerId $CustomerId `
+        -SharedKey $SharedKey `
+        -Date $date `
+        -ContentLength $contentLength `
+        -Method $method `
+        -ContentType $contentType `
+        -Resource $resource
+
+    $headers = @{
+        "Authorization" = $signature
+        "Log-Type"      = $LogType
+        "x-ms-date"     = $date
+    }
+
+    $uri = "https://$CustomerId.ods.opinsights.azure.com$resource" + "?api-version=2016-04-01"
+    $response = Invoke-WebRequest -Uri $uri -Method $method -ContentType $contentType -Headers $headers -Body $body -UseBasicParsing
+    return $response.StatusCode
+}
+
+function Send-CsvToLogAnalytics {
+    param(
+        [string]$Path,
+        [string]$LogType,
+        [string]$CustomerId,
+        [string]$SharedKey
+    )
+
+    $records = @(Import-Csv -Path $Path)
+    $batch = @()
+    $batchBytes = 0
+    $sent = 0
+
+    foreach ($record in $records) {
+        $recordBytes = [Text.Encoding]::UTF8.GetByteCount(($record | ConvertTo-Json -Depth 30 -Compress))
+        if ($batch.Count -gt 0 -and ($batchBytes + $recordBytes) -ge $MaxBatchBytes) {
+            if ($PSCmdlet.ShouldProcess($LogType, "Ingest $($batch.Count) records")) {
+                Send-LogAnalyticsBatch -CustomerId $CustomerId -SharedKey $SharedKey -LogType $LogType -Records $batch | Out-Null
+            }
+            $sent += $batch.Count
+            $batch = @()
+            $batchBytes = 0
+        }
+
+        $batch += $record
+        $batchBytes += $recordBytes
+    }
+
+    if ($batch.Count -gt 0) {
+        if ($PSCmdlet.ShouldProcess($LogType, "Ingest $($batch.Count) records")) {
+            Send-LogAnalyticsBatch -CustomerId $CustomerId -SharedKey $SharedKey -LogType $LogType -Records $batch | Out-Null
+        }
+        $sent += $batch.Count
+    }
+
+    return $sent
 }
 
 Assert-AzCli
-$SubscriptionId = Resolve-SubscriptionId -ProvidedSubscriptionId $SubscriptionId
+$resolvedSubscriptionId = Resolve-Subscription -ProvidedSubscriptionId $SubscriptionId
+$credentials = Get-WorkspaceCredentials -ResourceGroupName $ResourceGroupName -WorkspaceName $WorkspaceName
+$telemetryPath = Join-Path $WorkDir "Telemetry"
 
-$apiInfo = Get-GitHubApiInfo -RawBaseUrl $RepoBaseUrl
-
-$scriptsDir = Join-Path $WorkDir "Scripts"
-$customTelemetryPath = Join-Path $WorkDir "Telemetry\Custom"
-$builtInTelemetryPath = Join-Path $WorkDir "Telemetry\BuildIn"
-$templatesPath = Join-Path $WorkDir "DCRTemplates"
-
-foreach ($dir in @($scriptsDir, $customTelemetryPath, $builtInTelemetryPath, $templatesPath)) {
-    if (-not (Test-Path -Path $dir)) {
-        New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    }
-}
-
-Write-Host "Using subscription: $SubscriptionId"
+Write-Host "Using subscription: $resolvedSubscriptionId"
 Write-Host "Target workspace: $ResourceGroupName/$WorkspaceName"
-Write-Host "Working folder: $WorkDir"
+Write-Host "Source artifacts: $RepoBaseUrl"
+Write-Host "Working folder: $telemetryPath"
 
-$ingestScriptPath = Join-Path $scriptsDir "IngestCSV.ps1"
-Write-Host "Downloading ingestion helper..."
-Save-RepoFile -Url "$RepoBaseUrl/Scripts/IngestCSV.ps1" -OutFile $ingestScriptPath
-
-Write-Host "Discovering telemetry files..."
-$customFiles = Get-RepoFiles -ApiInfo $apiInfo -SubFolder "Telemetry/Custom" -Extensions @(".csv")
-$builtInFiles = if ($IncludeBuiltIn) {
-    Get-RepoFiles -ApiInfo $apiInfo -SubFolder "Telemetry/BuildIn" -Extensions @(".csv", ".json")
-} else {
-    @()
-}
-
-Write-Host "Downloading $($customFiles.Count) custom telemetry file(s)..."
-foreach ($file in $customFiles) {
-    Save-RepoFile -Url "$RepoBaseUrl/Telemetry/Custom/$file" -OutFile (Join-Path $customTelemetryPath $file)
-}
-
-if ($IncludeBuiltIn) {
-    Write-Host "Downloading $($builtInFiles.Count) built-in telemetry file(s)..."
-    foreach ($file in $builtInFiles) {
-        Save-RepoFile -Url "$RepoBaseUrl/Telemetry/BuildIn/$file" -OutFile (Join-Path $builtInTelemetryPath $file)
+if (-not $SkipDownload) {
+    foreach ($fileName in $TelemetryFiles.Keys) {
+        Save-TrainingFile -FileName $fileName -OutputPath (Join-Path $telemetryPath $fileName)
     }
 }
 
-if ($DownloadOnly) {
-    Write-Host "DownloadOnly was set. Files are ready in: $WorkDir"
-    return
+$summary = foreach ($fileName in $TelemetryFiles.Keys) {
+    $path = Join-Path $telemetryPath $fileName
+    if (-not (Test-Path -Path $path)) {
+        throw "Missing telemetry file '$path'. Remove -SkipDownload or check RepoBaseUrl."
+    }
+
+    $logType = $TelemetryFiles[$fileName]
+    Write-Host "Ingesting $fileName into $logType"
+    $count = Send-CsvToLogAnalytics `
+        -Path $path `
+        -LogType $logType `
+        -CustomerId $credentials.CustomerId `
+        -SharedKey $credentials.SharedKey
+
+    [pscustomobject]@{
+        File    = $fileName
+        LogType = $logType
+        Records = $count
+        Table   = if ($logType.EndsWith("_CL")) { $logType } else { "${logType}_CL" }
+    }
 }
 
-$ingestArgs = @{
-    SubscriptionId      = $SubscriptionId
-    ResourceGroupName   = $ResourceGroupName
-    WorkspaceName       = $WorkspaceName
-    DceName             = $DceName
-    DcrPrefix           = $DcrPrefix
-    TelemetryPath       = $customTelemetryPath
-    TemplatesOutputPath = $templatesPath
-    Deploy              = $true
-    Ingest              = $true
-}
+$summary | Format-Table -AutoSize
 
-if ($AssigneeObjectId) {
-    $ingestArgs["AssigneeObjectId"] = $AssigneeObjectId
+if ($WhatIfPreference) {
+    Write-Host "WhatIf was set. No data was posted."
 }
-
-if ($IncludeBuiltIn) {
-    $ingestArgs["BuiltInTelemetryPath"] = $builtInTelemetryPath
-    $ingestArgs["BuiltInDcrPrefix"] = $BuiltInDcrPrefix
-    $ingestArgs["DeployBuiltInDcr"] = $true
+else {
+    Write-Host "Ingestion requests completed. Tables can take several minutes to appear in Log Analytics."
 }
-
-Write-Host "Starting ingestion. This will create/update DCE, DCR, and table resources as needed..."
-& $ingestScriptPath @ingestArgs
