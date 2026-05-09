@@ -25,7 +25,7 @@ param(
 
     [string]$RepoBaseUrl = "https://raw.githubusercontent.com/kramit/SC-200-Notes/main/KQLData/Artifacts",
 
-    [string]$WorkDir = (Join-Path $env:TEMP "sc200-training-data"),
+    [string]$WorkDir = (Join-Path ([System.IO.Path]::GetTempPath()) "sc200-training-data"),
 
     [int]$MaxBatchBytes = 25MB,
 
